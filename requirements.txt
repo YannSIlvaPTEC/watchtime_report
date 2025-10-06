@@ -1,4 +1,9 @@
-Flask==3.0.3
-pandas==2.2.2
-requests==2.32.3
-gunicorn==23.0.0
+# requirements.txt - compatível com deploy no Render
+pip>=25.2
+setuptools>=68.0.0
+wheel
+
+Flask~=3.0          # qualquer versão 3.0.x
+pandas~=2.2         # qualquer versão 2.2.x
+requests>=2.32      # qualquer versão >= 2.32
+gunicorn>=23.0      # qualquer versão >= 23.0

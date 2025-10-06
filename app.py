@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, Response
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 import requests
+import re
 
 app = Flask(__name__)
 
@@ -144,17 +145,6 @@ def dados_filtrados():
     df_final = processar_tempo_por_aluno_e_aula(df_relatorio)
 
     return jsonify(df_final.to_dict(orient='records'))
-
-
-from flask import Flask, request, Response
-import pandas as pd
-from datetime import datetime, timedelta
-import re
-
-from flask import Flask, request, Response
-import pandas as pd
-from datetime import datetime, timedelta
-import re
 
 @app.route('/exportar_csv')
 def exportar_csv():
