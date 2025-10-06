@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Watchtime</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+    /* Animação das três bolinhas do modal de exportação */
+    .dot-loader {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .dot-loader span {
+      width: 10px;
+      height: 10px;
+      background-color: white;
+      border-radius: 50%;
+      display: inline-block;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .dot-loader span:nth-child(1) { animation-delay: 0s; }
+    .dot-loader span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container my-5">
+    <h1 class="mb-4 text-center">Relatório Watchtime</h1>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="cidadeFiltro" class="form-label">Cidade:</label>
+            <select id="cidadeFiltro" class="form-select">
+                <option value="todos" selected>Todos</option>
+                <option value="itabira">Itabira</option>
+                <option value="bomdespacho">Bom Despacho</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="tipoFiltro" class="form-label">Filtrar por:</label>
+            <select id="tipoFiltro" class="form-select">
+                <option value="data" selected>Intervalo de Datas</option>
+                <option value="relativo">Últimos Minutos/Horas/Dias</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-4" id="filtroData">
+        <div class="col-md-3">
+            <label for="fromDate" class="form-label">De:</label>
+            <input type="date" class="form-control" id="fromDate">
+        </div>
+        <div class="col-md-3">
+            <label for="toDate" class="form-label">Até:</label>
+            <input type="date" class="form-control" id="toDate">
+        </div>
+        <div class="col-md-3 align-self-end">
+            <button class="btn btn-primary w-100" id="filtrarData">Filtrar</button>
+        </div>
+    </div>
+
+    <div class="row mb-4 d-none" id="filtroRelativo">
+        <div class="col-md-4">
+            <label for="intervaloRelativo" class="form-label">Selecione o intervalo:</label>
+            <select id="intervaloRelativo" class="form-select">
+                <option value="15m">Últimos 15 minutos</option>
+                <option value="30m">Últimos 30 minutos</option>
+                <option value="1h">Última 1 hora</option>
+                <option value="3h">Últimas 3 horas</option>
+                <option value="6h">Últimas 6 horas</option>
+                <option value="12h">Últimas 12 horas</option>
+                <option value="24h">Últimas 24 horas</option>
+                <option value="2d">Últimos 2 dias</option>
+                <option value="7d">Últimos 7 dias</option>
+                <option value="15d">Últimos 15 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+            </select>
+        </div>
+        <div class="col-md-3 align-self-end">
+            <button class="btn btn-success w-100" id="filtrarRelativo">Filtrar</button>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-2">
+        <button class="btn btn-outline-success btn-sm" onclick="exportCSV()">📥 Exportar CSV</button>
+    </div>
+
+    <nav>
+        <ul class="pagination justify-content-center" id="paginationTop"></ul>
+    </nav>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered" id="tabela">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Aula</th>
+                    <th>Curso</th>
+                    <th>Duração</th>
+                    <th>Última Atualização</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <nav>
+        <ul class="pagination justify-content-center" id="paginationBottom"></ul>
+    </nav>
+</div>
+
+<!-- Modal carregando dados -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white text-center p-5" style="min-height:200px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div class="spinner-border text-light" style="width:3rem; height:3rem;" role="status"></div>
+      <h5 class="mt-3">Carregando dados, aguarde...</h5>
+    </div>
+  </div>
+</div>
+
+<!-- Modal exportação CSV -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white text-center p-4" style="min-height:150px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <h5>Exportando relatório em CSV baseado no seu filtro, aguarde</h5>
+      <div class="dot-loader mt-3">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let allData = [];
+const rowsPerPage = 20;
+let currentPage = 1;
+
+function formatDataBr(isoString) {
+    if (!isoString) return "";
+    const dt = new Date(isoString);
+    const dia = String(dt.getDate()).padStart(2, '0');
+    const mes = String(dt.getMonth() + 1).padStart(2, '0');
+    const ano = dt.getFullYear();
+    const hora = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    const seg = String(dt.getSeconds()).padStart(2, '0');
+    return `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+}
+
+function renderTable(page=1) {
+    const tbody = $('#tabela tbody');
+    tbody.empty();
+    allData.sort((a,b) => new Date(b['Última Atualização']) - new Date(a['Última Atualização']));
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const pagedData = allData.slice(start, end);
+    pagedData.forEach(d => {
+        tbody.append(`
+            <tr>
+                <td>${d['Nome Completo']}</td>
+                <td>${d.Email}</td>
+                <td>${d.Aula}</td>
+                <td>${d.Curso}</td>
+                <td>${d.Duração}</td>
+                <td>${formatDataBr(d['Última Atualização'])}</td>
+            </tr>
+        `);
+    });
+    renderPagination(page);
+}
+
+function renderPagination(page) {
+    const totalPages = Math.ceil(allData.length / rowsPerPage);
+    const paginationTop = $('#paginationTop');
+    const paginationBottom = $('#paginationBottom');
+    paginationTop.empty();
+    paginationBottom.empty();
+    const pagesToShow = 20;
+    const startPage = Math.max(1, page - Math.floor(pagesToShow / 2));
+    const endPage = Math.min(totalPages, startPage + pagesToShow - 1);
+
+    function createPagination(container) {
+        container.append(`<li class="page-item ${page === 1 ? 'disabled' : ''}">
+                              <a class="page-link" href="#" data-page="${page - 1}">Anterior</a>
+                          </li>`);
+        if (startPage > 1) {
+            container.append(`<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`);
+            if (startPage > 2) {
+                container.append(`<li class="page-item disabled"><a class="page-link" href="#">...</a></li>`);
+            }
+        }
+        for (let i = startPage; i <= endPage; i++) {
+            container.append(`<li class="page-item ${i === page ? 'active' : ''}">
+                                  <a class="page-link" href="#" data-page="${i}">${i}</a>
+                              </li>`);
+        }
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                container.append(`<li class="page-item disabled"><a class="page-link" href="#">...</a></li>`);
+            }
+            container.append(`<li class="page-item"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`);
+        }
+        container.append(`<li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                              <a class="page-link" href="#" data-page="${page + 1}">Próximo</a>
+                          </li>`);
+    }
+
+    createPagination(paginationTop);
+    createPagination(paginationBottom);
+
+    $('.page-link').click(function(e) {
+        e.preventDefault();
+        const newPage = parseInt($(this).data('page'));
+        if (!isNaN(newPage) && newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            renderTable(currentPage);
+        }
+    });
+}
+
+function carregarDados(params={}) {
+    const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    modal.show();
+
+    $.getJSON('/dados', params, function(data) {
+        allData = data;
+        currentPage = 1;
+        renderTable(currentPage);
+        modal.hide();
+    }).fail(() => {
+        modal.hide();
+        alert("Erro ao carregar dados!");
+    });
+}
+
+// Export CSV com modal funcional
+function exportCSV() {
+    const params = new URLSearchParams();
+    const from = $('#fromDate').val();
+    const to = $('#toDate').val();
+    const intervalo = $('#intervaloRelativo').val();
+    const cidade = $('#cidadeFiltro').val();
+
+    if (from) params.append("from", from);
+    if (to) params.append("to", to);
+    if ($('#tipoFiltro').val() === "relativo" && intervalo) params.append("intervalo", intervalo);
+    if (cidade) params.append("cidade", cidade);
+
+    const url = "/exportar_csv?" + params.toString();
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error("Erro ao gerar CSV");
+            return response.blob().then(blob => ({ blob, response }));
+        })
+        .then(({ blob, response }) => {
+            const contentDisposition = response.headers.get("Content-Disposition");
+            let filename = "relatorio.csv";
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="?(.+)"?/);
+                if (match && match[1]) filename = match[1];
+            }
+
+            const link = document.createElement("a");
+            link.href = window.URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        })
+        .catch(err => alert(err))
+        .finally(() => modal.hide());
+}
+
+$('#tipoFiltro').change(function() {
+    if ($(this).val() === 'data') {
+        $('#filtroData').removeClass('d-none');
+        $('#filtroRelativo').addClass('d-none');
+    } else {
+        $('#filtroData').addClass('d-none');
+        $('#filtroRelativo').removeClass('d-none');
+    }
+});
+
+$('#filtrarData').click(function() {
+    const from = $('#fromDate').val();
+    const to = $('#toDate').val();
+    const cidade = $('#cidadeFiltro').val();
+    carregarDados({ from: from, to: to, cidade: cidade });
+});
+
+$('#filtrarRelativo').click(function() {
+    const intervalo = $('#intervaloRelativo').val();
+    const cidade = $('#cidadeFiltro').val();
+    carregarDados({ intervalo: intervalo, cidade: cidade });
+});
+
+$('#cidadeFiltro').change(function() {
+    carregarDados({ cidade: $(this).val() });
+});
+
+carregarDados();
+</script>
+</body>
+</html>
